@@ -21,8 +21,29 @@ env:
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
 
 jobs:
+  ollama-secret-gate:
+    name: Check Ollama secret availability
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - name: Check OLLAMA_API_KEY secret
+        id: check
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          if [ -n "$OLLAMA_API_KEY" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "OLLAMA_API_KEY not configured; skipping Acceptance C." >&2
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
   acceptance-c:
     name: Acceptance C via Ollama Cloud
+    needs: ollama-secret-gate
+    if: needs.ollama-secret-gate.outputs.configured == 'true'
     runs-on: blacksmith-32vcpu-ubuntu-2404
     timeout-minutes: 120
     steps:

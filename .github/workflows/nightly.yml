@@ -35,8 +35,29 @@ jobs:
             GC_IDLE_BEAD_STABILITY_INTERVAL=5s
         run: make test-acceptance-b
 
+  ollama-secret-gate:
+    name: Check Ollama secret availability
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - name: Check OLLAMA_API_KEY secret
+        id: check
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          if [ -n "$OLLAMA_API_KEY" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "OLLAMA_API_KEY not configured; skipping Tier C Ollama tests." >&2
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
   tier-c:
     name: Tier C acceptance tests (Ollama)
+    needs: ollama-secret-gate
+    if: needs.ollama-secret-gate.outputs.configured == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
